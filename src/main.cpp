@@ -44,9 +44,19 @@ public:
   typedef std::tuple<int64_t, int64_t, NT *> ref_tuples;
 };
 
+const uint infplus(const int& a, const int& b) 
+{
+	uint inf = std::numeric_limits<uint>::max();
+    if (a == inf || b == inf)
+	{
+    	return inf;
+    }
+    return a + b;
+}
+
 /* MinPlus semiring: given two parallel routes in the matrix, keep the shortest */
 template <class T1, class T2, class OUT>
-struct MinPlusSRing
+struct BridgetMinPlusSRing
 {
 	static OUT id() 	        { return std::numeric_limits<OUT>::max(); };
 	static bool returnedSAID() 	{ return false; 	}
@@ -60,25 +70,23 @@ struct MinPlusSRing
 	/* instead of multiply, return the sum */
 	static OUT multiply(const T1& arg1, const T2& arg2)
 	{
-        	OUT sum = infplus(arg1, arg2);
-           	return sum;
-        } 
-        else return id();
+        OUT sum = infplus(arg1, arg2);
+        return sum;
 	}
-	static void axpy(T1 a, const T2 & x, OUT & y)
-	{   
-		y = add(y, multiply(a, x));
-	}
+	// static OUT axpy(T1 a, const T2& x, OUT& y)
+	// {   
+	// 	y = add(y, multiply(a, x));
+	// }
 };
 
 template <class T>
-struct ZeroOverhangSR : unary_function <T, bool>
+struct BridgetZeroSR : unary_function <T, bool>
 {
     bool operator() (const T& x) const { if(x == 0) return true; else return false; }
 };
 
 template <class T1, class T2, class OUT>
-struct ReduceMSRing : binary_function <T1, T2, OUT>
+struct BridgetReduceMaxSRing : binary_function <T1, T2, OUT>
 {
     OUT operator() (const T1& x, const T2& y) const
     {
@@ -88,7 +96,7 @@ struct ReduceMSRing : binary_function <T1, T2, OUT>
 };
 
 template <class T, class OUT>
-struct PlusCSRing : unary_function <T, OUT>
+struct BridgetPlusConstSRing : unary_function <T, OUT>
 {
     OUT operator() (T& x) const
     {
@@ -97,15 +105,22 @@ struct PlusCSRing : unary_function <T, OUT>
 };
 
 /*! type definitions */
-typedef MinPlusSRing <int, int, int> MinPlusSR_t;
-typedef ReduceMSRing <int, int, int> ReduceMSR_t;
+typedef BridgetMinPlusSRing <int, int, int> MinPlusSR_t;
+typedef BridgetReduceMaxSRing <int, int, int> ReduceMSR_t;
 
 //////////////////////////////////////////////////////////////////////////////////////
 // MAIN FUNCITON                                                                    // 
 //////////////////////////////////////////////////////////////////////////////////////
 
-int main
+int main(int argc, char **argv)
 {
+	/*! Init MPI */
+	int nproc;
+	int rank;
+	MPI_Init(&argc, &argv);
+	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
 	std::vector<int64_t> lcols, lrows;  // @Bridget, int64_t is the index type of your matrices right now (see PSpMat class definition above)
 	std::vector<int> lvals;				// @Bridget, working on ints in this example
 
@@ -129,7 +144,7 @@ int main
     FullyDistVec<int64_t, int64_t> dcols(lcols, fullWorld);
     FullyDistVec<int64_t, int> dvals(lvals, fullWorld);
 
-    PSpMat<PosInRead>::MPI_DCCols A(MAXK, MAXK, drows, dcols, dvals, false);
+    PSpMat<int>::MPI_DCCols A(MAXK, MAXK, drows, dcols, dvals, false);
 
 #ifdef SYMM
 	/*! Create a copy */
@@ -167,7 +182,7 @@ int main
 	timeA2 += MPI_Wtime() - start;
 
 	/*! Prune evaluates a function, if true, remove that nonzero */ 
-	B.Prune(ZeroOverhangSR<int>(), true);
+	B.Prune(BridgetZeroSR<int>(), true);
 
 	start = MPI_Wtime();
 	
@@ -179,7 +194,7 @@ int main
 	Vec1 = A.Reduce(Row, ReduceMSR_t(), id);
 
 	/*! How to apply a functor (semiring operation) to each nonzero in the vector */
-	Vec1.Apply(PlusCSRing<int, int>());
+	Vec1.Apply(BridgetPlusConstSRing<int, int>());
 
 	// @Bridget, it compiles/works fine until this point —I'm gonna leave the rest to you, feel free to reach out whenever needed.
 
@@ -228,5 +243,10 @@ int main
       		std::cout << "TransitiveReduction:TimeA  = " <<  maxtimeA << std::endl;
     	}
 #endif
+
+	/*! Finalize MPI */
+	MPI_Finalize();
+
 }
                      
+
