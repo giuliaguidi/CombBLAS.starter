@@ -1,6 +1,6 @@
 #include "CombBLAS/CombBLAS.h"
 
-#include <sys/time.h> 
+#include <sys/time.h>
 #include <iostream>
 #include <functional>
 #include <algorithm>
@@ -24,7 +24,7 @@ using namespace std;
 #define MAXK 10      // @Bridget, change this based on your input matrix
 
 //////////////////////////////////////////////////////////////////////////////////////
-// DEFINITIONS AND SEMIRINGS                                                        // 
+// DEFINITIONS AND SEMIRINGS                                                        //
 //////////////////////////////////////////////////////////////////////////////////////
 
 template <class T, std::size_t N>
@@ -38,13 +38,13 @@ template <class NT>
 class PSpMat
 {
 public:
-  typedef combblas::SpTuples <int64_t, NT> Tuples;	
+  typedef combblas::SpTuples <int64_t, NT> Tuples;
   typedef combblas::SpDCCols <int64_t, NT> DCCols;
   typedef combblas::SpParMat <int64_t, NT, DCCols> MPI_DCCols;
   typedef std::tuple<int64_t, int64_t, NT *> ref_tuples;
 };
 
-const uint infplus(const int& a, const int& b) 
+const uint infplus(const int& a, const int& b)
 {
 	uint inf = std::numeric_limits<uint>::max();
     if (a == inf || b == inf)
@@ -74,7 +74,7 @@ struct BridgetMinPlusSRing
         return sum;
 	}
 	// static OUT axpy(T1 a, const T2& x, OUT& y)
-	// {   
+	// {
 	// 	y = add(y, multiply(a, x));
 	// }
 };
@@ -109,7 +109,7 @@ typedef BridgetMinPlusSRing <int, int, int> MinPlusSR_t;
 typedef BridgetReduceMaxSRing <int, int, int> ReduceMSR_t;
 
 //////////////////////////////////////////////////////////////////////////////////////
-// MAIN FUNCITON                                                                    // 
+// MAIN FUNCITON                                                                    //
 //////////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char **argv)
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
 	BT.Transpose();
 
 	/*! How to apply a functor (semiring operation) to each nonzero in the matrix */
-	BT.Apply(OverhangTSRing<int, int>()); 
+	BT.Apply(OverhangTSRing<int, int>());
 
 	/*! How to symmetricize a lower/upper triangular matrix */
 	if(!(BT == B))
@@ -165,31 +165,31 @@ int main(int argc, char **argv)
 
 	/*! Debug print */
 	A.PrintInfo();
-	
+
 	/*! Print matrix to file in matrix market format */
-	A.ParallelWriteMM("bridget-test-input.mm", true);     
-	
+	A.ParallelWriteMM("bridget-test-input.mm", true);
+
 	/*! Get some timing */
 	uint nnz, prev;
 	double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
 
 	/*! SpGEMM */
 	double start = MPI_Wtime();
-	
+
 	PSpMat<int>::MPI_DCCols A2 = A;
 	PSpMat<int>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<MinPlusSR_t, int, PSpMat<int>::DCCols>(A, A2);
-	
+
 	timeA2 += MPI_Wtime() - start;
 
-	/*! Prune evaluates a function, if true, remove that nonzero */ 
+	/*! Prune evaluates a function, if true, remove that nonzero */
 	B.Prune(BridgetZeroSR<int>(), true);
 
 	start = MPI_Wtime();
-	
+
 	/*! It's creating an empty distributed vector mapped to the same processor grid as the matrix B */
 	FullyDistVec<int64_t, int> Vec1(A.getcommgrid());
 
-	int id = 0; 
+	int id = 0;
 	/*! This applies a reduction operation over rows of B and it returns a vector containing the result of the function evaluation */
 	Vec1 = A.Reduce(Row, ReduceMSR_t(), id);
 
@@ -200,22 +200,22 @@ int main(int argc, char **argv)
 
 	// /*! Basically the opposite od Reduce over Row in a matrix */
 	// B1.DimApply(Row, Vec1, Bind2ndSR_t());
-	
+
 	// timeC += MPI_Wtime() - start;
 
 	// start = MPI_Wtime();
 	// bool isLogicalNot = false;
-	
+
 	// /*! Ewiseapply takes two matrixes as input and apply a function to their entries element wise */
 	// PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(B1, C, GreaterBinaryOp<int, int>(), isLogicalNot, id);
 
-	// I.Prune(ZeroUnaryOp<bool>(), true); 
-	
+	// I.Prune(ZeroUnaryOp<bool>(), true);
+
 	// timeI += MPI_Wtime() - start;
-	
+
 	// start = MPI_Wtime();
 	// isLogicalNot = true;
-	
+
 	// /*! Ewiseapply takes two matrixes as input and apply a function to their entries element wise */
 	// B = EWiseApply<int, PSpMat<int>::DCCols>(B, I, EWiseMulOp<int, bool>(), isLogicalNot, true);
 
@@ -224,12 +224,12 @@ int main(int argc, char **argv)
 	// timeA += MPI_Wtime() - start;
 
 	// B.PrintInfo();
-	// B.ParallelWriteMM("bridget-test-output.mm", true); 
+	// B.ParallelWriteMM("bridget-test-output.mm", true);
 
  #ifdef TIME
-	
+
 	double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
-	
+
 	MPI_Reduce(&timeA2, &maxtimeA2, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&timeC,  &maxtimeC,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&timeI,  &maxtimeI,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -248,4 +248,3 @@ int main(int argc, char **argv)
 	MPI_Finalize();
 
 }
-                     
