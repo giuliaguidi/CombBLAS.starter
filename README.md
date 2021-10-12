@@ -41,4 +41,4 @@ You can load these depencencies on Cori typing `source cori-modules.sh`.
     cmake ../
     make`       
   ```
-  * You can run it using ``srun -n 1 -c 1 ./bridget'' using a single core on a single node since in the example the matrix is of dimension 10. You can increase the number of cores and processes when increasing the size of the matrix.
+  * You can run it using `srun -n 1 -c 1 ./bridget` using a single core on a single node since in the example the matrix is of dimension 10. You can increase the number of cores and processes when increasing the size of the matrix.
