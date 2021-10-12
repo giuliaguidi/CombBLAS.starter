@@ -31,3 +31,12 @@
     make -j4
     make install         
   ```
+1. Bridget's Project.
+  * The following commands can be used to build and install Bridget's Prject:
+  ```
+    mkdir build
+    cd build
+    cmake ../
+    make -j4
+    make install         
+  ```
