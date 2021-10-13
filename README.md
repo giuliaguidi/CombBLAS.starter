@@ -1,6 +1,4 @@
-# Bridget2021
-## Bridget's Research Project
-
+# CombBLAS's starter code
 ## Prerequisites
 
 1. Operating System.
