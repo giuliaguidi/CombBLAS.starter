@@ -1,0 +1,36 @@
+/* trying to understand */
+
+At a high level: CombBLAS has two major data structures: matrices and vectors.
+
+Both matrices and vectors have sparse as well as dense versions.
+
+The data structures are either stored in a single address space (locally), or
+distributed.
+
+The typical end user is expected to interact with CombBLAS via its distributed
+classes (SpParMat and FullyDistSpVec).
+
+The distributed sparse matrix class SpParMat is parametrized by the abstract
+base class SpMat, which is a local sparse matrix.
+
+Any sparse matrix data structure can derive from SpMat as long as it implements
+the SpMat interface, which consists of a few fundamental methods.
+
+Currently, there are three classes implemented: SpDCCols, SpCCols, and SpTuples.
+
+SpDCCols and SpCCols are wrappers around DCSC and CSC formats respectively.
+
+SpTuples is a wrapper around a std::vector composed of std::tuple entries.
+
+SpMat requires it derived classes to implement two iterators that allow power
+users (?) to implement novel graph algorithms in a data structure agnostic
+manner without going through the CombBLAS primary interface.
+
+The first iterator iterates over all nonzero columns of SpMat, and the second
+iterator iterates oveer all nonzero entries within a column of SpMat.
+
+CombBLAS does 2d distribution by default for all matrices but it also allows 3D
+distributions for its sparse matrices.
+
+For vectors, CombBLAS supports 2D decomposition by default, which is
+superimposed over the default 2D matrix decomposition.
