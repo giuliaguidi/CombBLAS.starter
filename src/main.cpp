@@ -17,8 +17,10 @@
 using namespace combblas;
 using namespace std;
 
-// #define SYMM
+#define SYMM
 // #define TIME
+#define TRIU
+#define TRIL
 
 #define MYCONSTANT 3 // @Bridget, this is just an example
 #define MAXK 10      // @Bridget, change this based on your input matrix
@@ -95,6 +97,16 @@ struct BridgetReduceMaxSRing : binary_function <T1, T2, OUT>
     }
 };
 
+auto TriLSR = [] (const std::tuple<int64_t, int64_t, int>& t)
+{
+        return static_cast<bool>(std::get<0>(t) <= std::get<1>(t));
+};
+
+auto TriUSR = [] (const std::tuple<int64_t, int64_t, int>& t)
+{
+        return static_cast<bool>(std::get<0>(t) >= std::get<1>(t));
+};
+
 template <class T, class OUT>
 struct BridgetPlusConstSRing : unary_function <T, OUT>
 {
@@ -146,20 +158,23 @@ int main(int argc, char **argv)
 
     PSpMat<int>::MPI_DCCols A(MAXK, MAXK, drows, dcols, dvals, false);
 
+    /*! Print matrix to file in matrix market format */
+    A.ParallelWriteMM("triu.mm", true);
+
 #ifdef SYMM
 	/*! Create a copy */
-	PSpMat<int>::MPI_DCCols BT = B; // build matrix
+	PSpMat<int>::MPI_DCCols AT = A; // build matrix
 
 	/*! How to create transpose matrix */
-	BT.Transpose();
+	AT.Transpose();
 
 	/*! How to apply a functor (semiring operation) to each nonzero in the matrix */
-	BT.Apply(OverhangTSRing<int, int>()); 
+	// AT.Apply(OverhangTSRing<int, int>()); 
 
 	/*! How to symmetricize a lower/upper triangular matrix */
-	if(!(BT == B))
+	if(!(AT == A))
 	{
-	 += BT;
+		A += AT;
 	}
 #endif SYMM
 
@@ -167,8 +182,24 @@ int main(int argc, char **argv)
 	A.PrintInfo();
 	
 	/*! Print matrix to file in matrix market format */
-	A.ParallelWriteMM("bridget-test-input.mm", true);     
-	
+	A.ParallelWriteMM("symm.mm", true); 
+	PSpMat<int>::MPI_DCCols F = A;
+
+#ifdef TRIL
+	A.PruneI(TriLSR, true);
+	/*! The second parameter for in-place or not */
+
+	/*! Print matrix to file in matrix market format */
+        A.ParallelWriteMM("tril-pruneI.mm", true);
+#endif
+
+#ifdef TRIU
+        F.PruneI(TriUSR, true);
+        /*! The second parameter for in-place or not */
+
+        /*! Print matrix to file in matrix market format */
+        F.ParallelWriteMM("triu-pruneI.mm", true);
+#endif	
 	/*! Get some timing */
 	uint nnz, prev;
 	double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
